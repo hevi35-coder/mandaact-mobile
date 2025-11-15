@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { useCreateMandalart } from '@/hooks/useMandalartMutations';
+import { supabase } from '@/services/supabase';
 
 type InputMethod = 'manual' | 'image' | 'text';
 
@@ -18,6 +22,11 @@ interface ManualInputData {
   centerGoal: string;
   subGoals: string[];
   actions: { [key: number]: string[] }; // subGoalIndex -> actions[]
+}
+
+interface OCRResult {
+  center_goal?: string;
+  sub_goals?: Array<{ title?: string; actions?: string[] }>;
 }
 
 export default function MandalartCreateScreen() {
@@ -33,6 +42,14 @@ export default function MandalartCreateScreen() {
     actions: {},
   });
   const [currentSubGoalIndex, setCurrentSubGoalIndex] = useState(0);
+
+  // Image OCR state
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
+
+  // Text paste state
+  const [pastedText, setPastedText] = useState('');
+  const [isProcessingText, setIsProcessingText] = useState(false);
 
   const handleBack = () => {
     Alert.alert(
@@ -136,6 +153,175 @@ export default function MandalartCreateScreen() {
       console.error('Failed to create mandalart:', error);
       Alert.alert('오류', '만다라트 생성 중 오류가 발생했습니다.');
     }
+  };
+
+  // Image OCR functions
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('권한 필요', '이미지를 선택하려면 갤러리 접근 권한이 필요합니다.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setSelectedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Failed to pick image:', error);
+      Alert.alert('오류', '이미지 선택 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleProcessOCR = async () => {
+    if (!selectedImage) return;
+
+    setIsProcessingOCR(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('로그인이 필요합니다');
+
+      // 1. Upload image to Supabase Storage
+      const response = await fetch(selectedImage);
+      const blob = await response.blob();
+      const fileExt = 'jpg';
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('mandalart-images')
+        .upload(filePath, blob, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('mandalart-images')
+        .getPublicUrl(filePath);
+
+      // 2. Call OCR Edge Function
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      if (authError || !session) throw new Error('인증 오류가 발생했습니다');
+
+      const ocrResponse = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/ocr-mandalart`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image_url: publicUrl,
+          }),
+        }
+      );
+
+      if (!ocrResponse.ok) {
+        const errorData = await ocrResponse.json();
+        throw new Error(errorData.error || 'OCR 처리 실패');
+      }
+
+      const ocrResult: OCRResult = await ocrResponse.json();
+
+      // 3. Convert to manual data format with AI type suggestions
+      await convertOCRToManualData(ocrResult);
+
+      Alert.alert('성공', 'OCR 처리가 완료되었습니다. 내용을 확인하고 수정하세요.');
+      setInputMethod('manual');
+      setStep('center');
+    } catch (error: any) {
+      console.error('OCR processing error:', error);
+      Alert.alert('오류', error.message || 'OCR 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessingOCR(false);
+    }
+  };
+
+  // Text parsing functions
+  const handleProcessText = async () => {
+    if (!pastedText.trim()) return;
+
+    setIsProcessingText(true);
+
+    try {
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      if (authError || !session) throw new Error('인증 오류가 발생했습니다');
+
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/parse-mandalart-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: pastedText,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '텍스트 분석 실패');
+      }
+
+      const result: OCRResult = await response.json();
+
+      // Convert to manual data format with AI type suggestions
+      await convertOCRToManualData(result);
+
+      Alert.alert('성공', '텍스트 분석이 완료되었습니다. 내용을 확인하고 수정하세요.');
+      setInputMethod('manual');
+      setStep('center');
+    } catch (error: any) {
+      console.error('Text processing error:', error);
+      Alert.alert('오류', error.message || '텍스트 분석 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessingText(false);
+    }
+  };
+
+  // Convert OCR/text result to manual data format
+  const convertOCRToManualData = async (result: OCRResult) => {
+    const newManualData: ManualInputData = {
+      centerGoal: result.center_goal || '',
+      subGoals: Array(8).fill(''),
+      actions: {},
+    };
+
+    if (result.sub_goals) {
+      result.sub_goals.forEach((sg, index) => {
+        if (index < 8 && sg.title) {
+          newManualData.subGoals[index] = sg.title;
+
+          if (sg.actions) {
+            const actions = Array(8).fill('');
+            sg.actions.forEach((actionTitle, actionIndex) => {
+              if (actionIndex < 8 && actionTitle) {
+                actions[actionIndex] = actionTitle;
+              }
+            });
+            newManualData.actions[index] = actions;
+          }
+        }
+      });
+    }
+
+    setManualData(newManualData);
   };
 
   const renderProgressIndicator = () => {
@@ -382,16 +568,99 @@ export default function MandalartCreateScreen() {
         )}
 
         {inputMethod === 'image' && (
-          <View style={styles.comingSoon}>
-            <Ionicons name="construct-outline" size={64} color="#d1d5db" />
-            <Text style={styles.comingSoonText}>이미지 업로드 기능 준비 중</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.stepTitle}>이미지 업로드</Text>
+            <Text style={styles.stepDescription}>
+              만다라트 이미지를 업로드하면 자동으로 텍스트를 추출합니다.
+            </Text>
+
+            {!selectedImage ? (
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={handlePickImage}
+                disabled={isProcessingOCR}
+              >
+                <Ionicons name="cloud-upload-outline" size={48} color="#0ea5e9" />
+                <Text style={styles.uploadText}>이미지 선택</Text>
+                <Text style={styles.uploadSubtext}>갤러리에서 이미지를 선택하세요</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+                <View style={styles.imageActions}>
+                  <TouchableOpacity
+                    style={styles.changeImageButton}
+                    onPress={() => setSelectedImage(null)}
+                    disabled={isProcessingOCR}
+                  >
+                    <Text style={styles.changeImageText}>다시 선택</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.processButton}
+                    onPress={handleProcessOCR}
+                    disabled={isProcessingOCR}
+                  >
+                    {isProcessingOCR ? (
+                      <>
+                        <ActivityIndicator color="#fff" size="small" />
+                        <Text style={styles.processButtonText}>처리 중...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="scan-outline" size={20} color="#fff" />
+                        <Text style={styles.processButtonText}>텍스트 추출</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
         {inputMethod === 'text' && (
-          <View style={styles.comingSoon}>
-            <Ionicons name="construct-outline" size={64} color="#d1d5db" />
-            <Text style={styles.comingSoonText}>텍스트 붙여넣기 기능 준비 중</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.stepTitle}>텍스트 붙여넣기</Text>
+            <Text style={styles.stepDescription}>
+              만다라트 텍스트를 붙여넣으면 자동으로 분석합니다.
+            </Text>
+
+            <TextInput
+              style={styles.textInput}
+              placeholder={`예시:\n핵심 목표: 건강한 삶\n\n1. 운동\n   - 매일 30분 걷기\n   - 주 3회 근력 운동\n   - 스트레칭 루틴\n   ...\n\n2. 식습관\n   - 아침 거르지 않기\n   ...\n\n(총 8개 세부 목표, 각 8개 실천 항목)`}
+              value={pastedText}
+              onChangeText={setPastedText}
+              multiline
+              textAlignVertical="top"
+              editable={!isProcessingText}
+            />
+
+            <View style={styles.textActions}>
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => setPastedText('')}
+                disabled={isProcessingText}
+              >
+                <Text style={styles.clearButtonText}>지우기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.processButton}
+                onPress={handleProcessText}
+                disabled={isProcessingText || !pastedText.trim()}
+              >
+                {isProcessingText ? (
+                  <>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={styles.processButtonText}>분석 중...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="sparkles-outline" size={20} color="#fff" />
+                    <Text style={styles.processButtonText}>텍스트 분석</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -651,20 +920,107 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  comingSoon: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 100,
-  },
-  comingSoonText: {
-    fontSize: 16,
-    color: '#9ca3af',
-    marginTop: 16,
-  },
   emptyText: {
     fontSize: 16,
     color: '#9ca3af',
     textAlign: 'center',
+  },
+  inputContainer: {
+    padding: 20,
+  },
+  uploadButton: {
+    backgroundColor: '#f0f9ff',
+    borderWidth: 2,
+    borderColor: '#0ea5e9',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  uploadText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0ea5e9',
+    marginTop: 12,
+  },
+  uploadSubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  imagePreviewContainer: {
+    marginTop: 16,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 300,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+  },
+  imageActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  changeImageButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  changeImageText: {
+    color: '#6b7280',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  processButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0ea5e9',
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  processButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  textInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 14,
+    minHeight: 300,
+    fontFamily: 'monospace',
+    marginTop: 16,
+  },
+  textActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  clearButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    color: '#6b7280',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
