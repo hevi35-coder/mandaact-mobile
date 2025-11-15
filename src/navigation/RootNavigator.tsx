@@ -8,6 +8,7 @@ import { Session } from '@supabase/supabase-js';
 import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignupScreen from '@/screens/auth/SignupScreen';
+import MandalartCreateScreen from '@/screens/mandalart/MandalartCreateScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,7 +46,14 @@ export default function RootNavigator() {
             <Stack.Screen name="Signup" component={SignupScreen} />
           </>
         ) : (
-          <Stack.Screen name="Main" component={MainTabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen
+              name="MandalartCreate"
+              component={MandalartCreateScreen}
+              options={{ presentation: 'modal' }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

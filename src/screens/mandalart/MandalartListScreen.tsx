@@ -6,12 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useMandalarts } from '@/hooks/useMandalarts';
+import { useActivateMandalart } from '@/hooks/useMandalartMutations';
 
 export default function MandalartListScreen() {
+  const navigation = useNavigation();
   const { data: mandalarts, isLoading } = useMandalarts();
+  const activateMandalart = useActivateMandalart();
 
   if (isLoading) {
     return (
@@ -23,11 +28,24 @@ export default function MandalartListScreen() {
 
   const hasMandalarts = mandalarts && mandalarts.length > 0;
 
+  const handleActivateMandalart = async (mandalartId: string, centerGoal: string) => {
+    try {
+      await activateMandalart.mutateAsync(mandalartId);
+      Alert.alert('성공', `"${centerGoal}" 만다라트가 활성화되었습니다.`);
+    } catch (error) {
+      console.error('Failed to activate mandalart:', error);
+      Alert.alert('오류', '만다라트 활성화 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>만다라트 관리</Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate('MandalartCreate' as never)}
+        >
           <Ionicons name="add-circle" size={28} color="#0ea5e9" />
         </TouchableOpacity>
       </View>
@@ -41,7 +59,10 @@ export default function MandalartListScreen() {
               <Text style={styles.emptySubtext}>
                 첫 번째 만다라트를 생성하여{'\n'}목표 달성을 시작해보세요
               </Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={() => navigation.navigate('MandalartCreate' as never)}
+              >
                 <Ionicons name="add" size={20} color="#fff" />
                 <Text style={styles.createButtonText}>만다라트 만들기</Text>
               </TouchableOpacity>
@@ -75,7 +96,10 @@ export default function MandalartListScreen() {
                     <Text style={styles.viewButtonText}>보기</Text>
                   </TouchableOpacity>
                   {!mandalart.is_active && (
-                    <TouchableOpacity style={styles.activateButton}>
+                    <TouchableOpacity
+                      style={styles.activateButton}
+                      onPress={() => handleActivateMandalart(mandalart.id, mandalart.center_goal)}
+                    >
                       <Text style={styles.activateButtonText}>활성화</Text>
                     </TouchableOpacity>
                   )}

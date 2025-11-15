@@ -85,7 +85,7 @@ export default function TodayScreen() {
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('MandalartTab' as never)}
+              onPress={() => navigation.navigate('MandalartCreate' as never)}
             >
               <Text style={styles.emptyButtonText}>만다라트 만들기</Text>
             </TouchableOpacity>
