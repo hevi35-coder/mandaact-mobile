@@ -9,6 +9,7 @@ import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignupScreen from '@/screens/auth/SignupScreen';
 import MandalartCreateScreen from '@/screens/mandalart/MandalartCreateScreen';
+import MandalartDetailScreen from '@/screens/mandalart/MandalartDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -52,6 +53,10 @@ export default function RootNavigator() {
               name="MandalartCreate"
               component={MandalartCreateScreen}
               options={{ presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="MandalartDetail"
+              component={MandalartDetailScreen}
             />
           </>
         )}

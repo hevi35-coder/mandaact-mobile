@@ -78,7 +78,13 @@ export default function MandalartListScreen() {
         ) : (
           <View style={styles.mandalartList}>
             {mandalarts.map((mandalart) => (
-              <TouchableOpacity key={mandalart.id} style={styles.mandalartCard}>
+              <TouchableOpacity
+                key={mandalart.id}
+                style={styles.mandalartCard}
+                onPress={() =>
+                  navigation.navigate('MandalartDetail' as never, { mandalartId: mandalart.id } as never)
+                }
+              >
                 <View style={styles.mandalartHeader}>
                   <Text style={styles.mandalartTitle}>{mandalart.center_goal}</Text>
                   {mandalart.is_active && (
@@ -91,14 +97,23 @@ export default function MandalartListScreen() {
                   생성일: {new Date(mandalart.created_at).toLocaleDateString('ko-KR')}
                 </Text>
                 <View style={styles.mandalartActions}>
-                  <TouchableOpacity style={styles.viewButton}>
+                  <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      navigation.navigate('MandalartDetail' as never, { mandalartId: mandalart.id } as never);
+                    }}
+                  >
                     <Ionicons name="eye-outline" size={18} color="#0ea5e9" />
                     <Text style={styles.viewButtonText}>보기</Text>
                   </TouchableOpacity>
                   {!mandalart.is_active && (
                     <TouchableOpacity
                       style={styles.activateButton}
-                      onPress={() => handleActivateMandalart(mandalart.id, mandalart.center_goal)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleActivateMandalart(mandalart.id, mandalart.center_goal);
+                      }}
                     >
                       <Text style={styles.activateButtonText}>활성화</Text>
                     </TouchableOpacity>

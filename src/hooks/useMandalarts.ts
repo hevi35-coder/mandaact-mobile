@@ -52,3 +52,30 @@ export function useActiveMandalart() {
     },
   });
 }
+
+export function useMandalartDetail(mandalartId: string) {
+  return useQuery({
+    queryKey: ['mandalarts', mandalartId, 'detail'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('mandalarts')
+        .select(`
+          *,
+          sub_goals (
+            *,
+            actions (*)
+          )
+        `)
+        .eq('id', mandalartId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data as Mandalart & { sub_goals: Array<any> };
+    },
+    enabled: !!mandalartId,
+  });
+}
