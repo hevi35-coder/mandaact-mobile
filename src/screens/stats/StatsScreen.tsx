@@ -1,8 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useUserStats } from '@/hooks/useUserProfile';
+import { getLevelFromXP } from '@/lib/xpMultipliers';
 
 export default function StatsScreen() {
+  const { data: userStats, isLoading } = useUserStats();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#0ea5e9" />
+      </View>
+    );
+  }
+
+  const currentLevel = userStats ? getLevelFromXP(userStats.totalXP) : 1;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -13,25 +27,25 @@ export default function StatsScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Ionicons name="checkmark-circle" size={32} color="#10b981" />
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{userStats?.totalChecks || 0}</Text>
             <Text style={styles.statLabel}>총 체크</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="flame" size={32} color="#f59e0b" />
-            <Text style={styles.statValue}>0일</Text>
+            <Text style={styles.statValue}>{userStats?.currentStreak || 0}일</Text>
             <Text style={styles.statLabel}>현재 스트릭</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="trophy" size={32} color="#8b5cf6" />
-            <Text style={styles.statValue}>Lv.1</Text>
+            <Text style={styles.statValue}>Lv.{currentLevel}</Text>
             <Text style={styles.statLabel}>레벨</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="star" size={32} color="#eab308" />
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{userStats?.totalBadges || 0}</Text>
             <Text style={styles.statLabel}>획득 배지</Text>
           </View>
         </View>
@@ -66,6 +80,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     backgroundColor: '#fff',

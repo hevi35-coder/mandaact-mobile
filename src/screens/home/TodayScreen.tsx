@@ -7,18 +7,44 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTodayActions } from '@/hooks/useTodayActions';
+import { useCheckAction, useUncheckAction } from '@/hooks/useActionMutations';
 import { getKSTDate } from '@/lib/timezone';
 
 export default function TodayScreen() {
   const navigation = useNavigation();
   const { data: todayActions, isLoading, refetch } = useTodayActions();
+  const checkAction = useCheckAction();
+  const uncheckAction = useUncheckAction();
 
   const onRefresh = async () => {
     await refetch();
+  };
+
+  const handleToggleCheck = async (actionId: string, isChecked: boolean, actionContent: string) => {
+    try {
+      if (isChecked) {
+        // Uncheck
+        await uncheckAction.mutateAsync(actionId);
+        Alert.alert('체크 취소', `"${actionContent}" 체크가 취소되었습니다.`);
+      } else {
+        // Check
+        const result = await checkAction.mutateAsync(actionId);
+
+        let message = `+${result.xpAwarded} XP 획득!`;
+        if (result.leveledUp) {
+          message += `\n🎉 레벨 ${result.newLevel}로 레벨업!`;
+        }
+
+        Alert.alert('완료!', message);
+      }
+    } catch (error: any) {
+      Alert.alert('오류', error.message || '체크 처리 중 오류가 발생했습니다.');
+    }
   };
 
   if (isLoading) {
@@ -116,9 +142,8 @@ export default function TodayScreen() {
                   <Text style={styles.actionContent}>{action.content}</Text>
                   <TouchableOpacity
                     style={[styles.checkButton, isChecked && styles.checkButtonChecked]}
-                    onPress={() => {
-                      // TODO: Implement check/uncheck
-                    }}
+                    onPress={() => handleToggleCheck(action.id, isChecked, action.content)}
+                    disabled={checkAction.isPending || uncheckAction.isPending}
                   >
                     <Ionicons
                       name={isChecked ? 'checkmark-circle' : 'checkmark-circle-outline'}
@@ -126,7 +151,11 @@ export default function TodayScreen() {
                       color={isChecked ? '#10b981' : '#9ca3af'}
                     />
                     <Text style={[styles.checkButtonText, isChecked && styles.checkButtonTextChecked]}>
-                      {isChecked ? '완료' : '체크'}
+                      {checkAction.isPending || uncheckAction.isPending
+                        ? '처리중...'
+                        : isChecked
+                        ? '완료'
+                        : '체크'}
                     </Text>
                   </TouchableOpacity>
                 </View>
