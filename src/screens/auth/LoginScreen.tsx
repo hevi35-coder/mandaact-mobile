@@ -11,7 +11,11 @@ import {
 } from 'react-native';
 import { supabase } from '@/services/supabase';
 
-export default function LoginScreen() {
+interface LoginScreenProps {
+  navigation: any;
+}
+
+export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -78,7 +82,10 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.linkButton}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate('Signup')}
+          >
             <Text style={styles.linkText}>회원가입</Text>
           </TouchableOpacity>
         </View>

@@ -4,9 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '@/services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-// Screens
+// Navigators & Screens
+import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '@/screens/auth/LoginScreen';
-import HomeScreen from '@/screens/home/HomeScreen';
+import SignupScreen from '@/screens/auth/SignupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,9 +40,12 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!session ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+          </>
         ) : (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Main" component={MainTabNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
