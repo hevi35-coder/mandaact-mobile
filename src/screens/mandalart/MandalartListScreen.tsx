@@ -5,10 +5,24 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useMandalarts } from '@/hooks/useMandalarts';
 
 export default function MandalartListScreen() {
+  const { data: mandalarts, isLoading } = useMandalarts();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#0ea5e9" />
+      </View>
+    );
+  }
+
+  const hasMandalarts = mandalarts && mandalarts.length > 0;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -19,24 +33,57 @@ export default function MandalartListScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.emptyState}>
-          <Ionicons name="grid-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>만다라트가 없습니다</Text>
-          <Text style={styles.emptySubtext}>
-            첫 번째 만다라트를 생성하여{'\n'}목표 달성을 시작해보세요
-          </Text>
-          <TouchableOpacity style={styles.createButton}>
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.createButtonText}>만다라트 만들기</Text>
-          </TouchableOpacity>
-        </View>
+        {!hasMandalarts ? (
+          <>
+            <View style={styles.emptyState}>
+              <Ionicons name="grid-outline" size={64} color="#d1d5db" />
+              <Text style={styles.emptyText}>만다라트가 없습니다</Text>
+              <Text style={styles.emptySubtext}>
+                첫 번째 만다라트를 생성하여{'\n'}목표 달성을 시작해보세요
+              </Text>
+              <TouchableOpacity style={styles.createButton}>
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.createButtonText}>만다라트 만들기</Text>
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>만다라트란?</Text>
-          <Text style={styles.infoText}>
-            9x9 그리드로 목표를 체계적으로 관리하는 일본식 목표 설정 도구입니다.
-          </Text>
-        </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>만다라트란?</Text>
+              <Text style={styles.infoText}>
+                9x9 그리드로 목표를 체계적으로 관리하는 일본식 목표 설정 도구입니다.
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.mandalartList}>
+            {mandalarts.map((mandalart) => (
+              <TouchableOpacity key={mandalart.id} style={styles.mandalartCard}>
+                <View style={styles.mandalartHeader}>
+                  <Text style={styles.mandalartTitle}>{mandalart.center_goal}</Text>
+                  {mandalart.is_active && (
+                    <View style={styles.activeBadge}>
+                      <Text style={styles.activeBadgeText}>활성</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.mandalartDate}>
+                  생성일: {new Date(mandalart.created_at).toLocaleDateString('ko-KR')}
+                </Text>
+                <View style={styles.mandalartActions}>
+                  <TouchableOpacity style={styles.viewButton}>
+                    <Ionicons name="eye-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.viewButtonText}>보기</Text>
+                  </TouchableOpacity>
+                  {!mandalart.is_active && (
+                    <TouchableOpacity style={styles.activateButton}>
+                      <Text style={styles.activateButtonText}>활성화</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -46,6 +93,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -122,5 +173,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     lineHeight: 20,
+  },
+  mandalartList: {
+    padding: 16,
+  },
+  mandalartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mandalartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mandalartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  activeBadge: {
+    backgroundColor: '#d1fae5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  activeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  mandalartDate: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  mandalartActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  viewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  viewButtonText: {
+    color: '#0ea5e9',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activateButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#0ea5e9',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

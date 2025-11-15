@@ -136,3 +136,15 @@ export function userDateTimeToUTC(
 
   return utcDate.toISOString()
 }
+
+/**
+ * Get current date in KST timezone
+ * This is a helper function for React Native migration compatibility
+ *
+ * @param date - Optional date to convert (defaults to now)
+ * @param timezone - User's timezone (default: Asia/Seoul)
+ * @returns Date object in KST timezone
+ */
+export function getKSTDate(date: Date = new Date(), timezone: string = DEFAULT_TIMEZONE): Date {
+  return toZonedTime(date, timezone)
+}

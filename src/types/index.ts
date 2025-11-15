@@ -26,6 +26,7 @@ export interface Action {
   sub_goal_id: string
   position: number // 1-8
   title: string
+  content: string // Action description/content
   created_at: string
 
   // Type system
@@ -96,6 +97,36 @@ export interface ChatMessage {
     low_performance_areas?: string[]
   }
   created_at: string
+}
+
+export interface UserGamification {
+  user_id: string
+  total_xp: number
+  current_level: number
+  current_streak: number
+  max_streak: number
+  freeze_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface Achievement {
+  id: string
+  category: string
+  slug: string
+  title: string
+  description: string
+  xp_reward: number
+  is_repeatable: boolean
+  is_monthly: boolean
+  created_at: string
+}
+
+export interface UserAchievement {
+  user_id: string
+  achievement_id: string
+  unlocked_at: string
+  is_new: boolean
 }
 
 export interface CoachingContext {

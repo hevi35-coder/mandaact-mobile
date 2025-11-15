@@ -291,6 +291,50 @@ export function formatMultiplier(multiplier: number): string {
 }
 
 /**
+ * Calculate level from total XP using hybrid log curve
+ * Level 1-2: Linear (100 XP/level)
+ * Level 3-10: Moderate curve
+ * Level 11+: Gentle slope
+ */
+export function getLevelFromXP(totalXP: number): number {
+  if (totalXP === 0) return 1
+  if (totalXP < 100) return 1
+  if (totalXP < 200) return 2
+
+  // Binary search for efficiency
+  let level = 3
+  while (calculateXPForLevel(level + 1) <= totalXP) {
+    level++
+  }
+  return level
+}
+
+/**
+ * Calculate XP required for a specific level using hybrid log curve
+ */
+export function calculateXPForLevel(level: number): number {
+  if (level === 1) return 0
+  if (level === 2) return 100
+
+  // Hybrid log curve formula for levels 3+
+  // Base formula: XP(n) = 100 * (1 + log_2(n-1))
+  // Zone adjustments:
+  //   - Level 3-10: Moderate growth (1.2x multiplier)
+  //   - Level 11+: Gentle slope (1.5x multiplier)
+
+  const baseXP = 100
+  const logValue = Math.log2(level - 1)
+
+  if (level <= 10) {
+    // Moderate curve for early levels
+    return Math.floor(baseXP * (1 + logValue * 1.2))
+  } else {
+    // Gentle slope for higher levels
+    return Math.floor(baseXP * (1 + logValue * 1.5))
+  }
+}
+
+/**
  * Get multiplier color for UI
  */
 export function getMultiplierColor(type: XPMultiplier['type']): string {
