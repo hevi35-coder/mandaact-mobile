@@ -76,6 +76,15 @@ export function calculateTotalMultiplier(multipliers: XPMultiplier[]): number {
 }
 
 /**
+ * Calculate XP with multipliers applied
+ * Convenience wrapper around calculateTotalMultiplier
+ */
+export function calculateXPWithMultipliers(baseXP: number, multipliers: XPMultiplier[]): number {
+  const totalMultiplier = calculateTotalMultiplier(multipliers)
+  return Math.round(baseXP * totalMultiplier)
+}
+
+/**
  * Check comeback bonus: 1.5x for 3 days after 3+ day absence
  */
 async function checkComebackBonus(userId: string): Promise<XPMultiplier | null> {
