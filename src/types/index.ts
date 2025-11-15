@@ -110,25 +110,6 @@ export interface UserGamification {
   updated_at: string
 }
 
-export interface Achievement {
-  id: string
-  category: string
-  slug: string
-  title: string
-  description: string
-  xp_reward: number
-  is_repeatable: boolean
-  is_monthly: boolean
-  created_at: string
-}
-
-export interface UserAchievement {
-  user_id: string
-  achievement_id: string
-  unlocked_at: string
-  is_new: boolean
-}
-
 export interface CoachingContext {
   user_id: string
   mandalart?: {

@@ -1090,20 +1090,24 @@ export async function checkAndUnlockAchievements(userId: string) {
   if (neededStats.has('totalChecks')) {
     keys.push('totalChecks')
     promises.push(
-      supabase.from('check_history')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .then(({ count }) => count || 0)
+      Promise.resolve(
+        supabase.from('check_history')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .then(({ count }) => count || 0)
+      )
     )
   }
 
   if (neededStats.has('checks')) {
     keys.push('checks')
     promises.push(
-      supabase.from('check_history')
-        .select('checked_at')
-        .eq('user_id', userId)
-        .then(({ data }) => data || [])
+      Promise.resolve(
+        supabase.from('check_history')
+          .select('checked_at')
+          .eq('user_id', userId)
+          .then(({ data }) => data || [])
+      )
     )
   }
 

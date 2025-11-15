@@ -9,12 +9,17 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useMandalarts } from '@/hooks/useMandalarts';
 import { useActivateMandalart } from '@/hooks/useMandalartMutations';
 
+type RootStackParamList = {
+  MandalartDetail: { mandalartId: string };
+  MandalartCreate: undefined;
+};
+
 export default function MandalartListScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { data: mandalarts, isLoading } = useMandalarts();
   const activateMandalart = useActivateMandalart();
 
@@ -44,7 +49,7 @@ export default function MandalartListScreen() {
         <Text style={styles.title}>만다라트 관리</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => navigation.navigate('MandalartCreate' as never)}
+          onPress={() => navigation.navigate('MandalartCreate')}
         >
           <Ionicons name="add-circle" size={28} color="#0ea5e9" />
         </TouchableOpacity>
@@ -61,7 +66,7 @@ export default function MandalartListScreen() {
               </Text>
               <TouchableOpacity
                 style={styles.createButton}
-                onPress={() => navigation.navigate('MandalartCreate' as never)}
+                onPress={() => navigation.navigate('MandalartCreate')}
               >
                 <Ionicons name="add" size={20} color="#fff" />
                 <Text style={styles.createButtonText}>만다라트 만들기</Text>
@@ -82,7 +87,7 @@ export default function MandalartListScreen() {
                 key={mandalart.id}
                 style={styles.mandalartCard}
                 onPress={() =>
-                  navigation.navigate('MandalartDetail' as never, { mandalartId: mandalart.id } as never)
+                  navigation.navigate('MandalartDetail', { mandalartId: mandalart.id })
                 }
               >
                 <View style={styles.mandalartHeader}>
@@ -101,7 +106,7 @@ export default function MandalartListScreen() {
                     style={styles.viewButton}
                     onPress={(e) => {
                       e.stopPropagation();
-                      navigation.navigate('MandalartDetail' as never, { mandalartId: mandalart.id } as never);
+                      navigation.navigate('MandalartDetail', { mandalartId: mandalart.id });
                     }}
                   >
                     <Ionicons name="eye-outline" size={18} color="#0ea5e9" />
