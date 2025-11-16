@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useToast } from '@/components/feedback/Toast';
 
 interface LoginScreenProps {
   navigation: any;
@@ -19,10 +18,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('오류', '이메일과 비밀번호를 입력해주세요.');
+      showToast('error', '이메일과 비밀번호를 입력해주세요.');
       return;
     }
 
@@ -34,10 +34,10 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       });
 
       if (error) {
-        Alert.alert('로그인 실패', error.message);
+        showToast('error', error.message);
       }
     } catch (error) {
-      Alert.alert('오류', '로그인 중 문제가 발생했습니다.');
+      showToast('error', '로그인 중 문제가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -45,16 +45,15 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>MandaAct</Text>
-        <Text style={styles.subtitle}>목표를 실천으로</Text>
+      <View className="flex-1 justify-center items-center p-5">
+        <Text className="text-5xl font-bold text-sky-500 mb-2">MandaAct</Text>
+        <Text className="text-base text-gray-600 mb-10">목표를 실천으로</Text>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
+        <View className="w-full max-w-sm">
+          <Input
             placeholder="이메일"
             value={email}
             onChangeText={setEmail}
@@ -63,95 +62,38 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             autoComplete="email"
           />
 
-          <TextInput
-            style={styles.input}
+          <Input
             placeholder="비밀번호"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
+            className="mt-4"
           />
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
             onPress={handleLogin}
             disabled={loading}
+            className="mt-6"
           >
-            <Text style={styles.buttonText}>
-              {loading ? '로그인 중...' : '로그인'}
-            </Text>
-          </TouchableOpacity>
+            로그인
+          </Button>
 
-          <TouchableOpacity
-            style={styles.linkButton}
+          <Button
+            variant="ghost"
+            size="md"
+            fullWidth
             onPress={() => navigation.navigate('Signup')}
+            className="mt-4"
           >
-            <Text style={styles.linkText}>회원가입</Text>
-          </TouchableOpacity>
+            회원가입
+          </Button>
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#0ea5e9',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
-  },
-  form: {
-    width: '100%',
-    maxWidth: 400,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  button: {
-    height: 50,
-    backgroundColor: '#0ea5e9',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#0ea5e9',
-    fontSize: 14,
-  },
-});

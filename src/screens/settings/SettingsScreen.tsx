@@ -1,15 +1,121 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert as RNAlert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, Alert as RNAlert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { Card, Button } from '@/components/ui';
+import { useToast } from '@/components/feedback/Toast';
+import {
+  getNotificationSettings,
+  updateNotificationSetting,
+  registerForPushNotifications,
+  type NotificationSettings,
+} from '@/services/notifications';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user, setUser } = useAuthStore();
+  const { showToast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    dailyReminder: false,
+    badgeNotifications: false,
+    reportNotifications: false,
+    reminderTime: '21:00',
+  });
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  // Load notification settings on mount
+  useEffect(() => {
+    loadNotificationSettings();
+  }, []);
+
+  const loadNotificationSettings = async () => {
+    try {
+      const settings = await getNotificationSettings();
+      setNotificationSettings(settings);
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  const handleToggleDailyReminder = async (value: boolean) => {
+    try {
+      // If enabling, request permission first
+      if (value && user) {
+        const token = await registerForPushNotifications(user.id);
+        if (!token) {
+          showToast('error', '알림 권한을 허용해주세요.');
+          return;
+        }
+      }
+
+      await updateNotificationSetting('dailyReminder', value);
+      setNotificationSettings((prev) => ({ ...prev, dailyReminder: value }));
+
+      if (value) {
+        showToast('success', `매일 ${notificationSettings.reminderTime}에 알림을 받습니다.`);
+      } else {
+        showToast('info', '일일 리마인더가 꺼졌습니다.');
+      }
+    } catch (error: any) {
+      console.error('Error toggling daily reminder:', error);
+      showToast('error', '설정 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleToggleBadgeNotifications = async (value: boolean) => {
+    try {
+      // If enabling, request permission first
+      if (value && user) {
+        const token = await registerForPushNotifications(user.id);
+        if (!token) {
+          showToast('error', '알림 권한을 허용해주세요.');
+          return;
+        }
+      }
+
+      await updateNotificationSetting('badgeNotifications', value);
+      setNotificationSettings((prev) => ({ ...prev, badgeNotifications: value }));
+
+      if (value) {
+        showToast('success', '배지 알림이 켜졌습니다.');
+      } else {
+        showToast('info', '배지 알림이 꺼졌습니다.');
+      }
+    } catch (error: any) {
+      console.error('Error toggling badge notifications:', error);
+      showToast('error', '설정 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleToggleReportNotifications = async (value: boolean) => {
+    try {
+      // If enabling, request permission first
+      if (value && user) {
+        const token = await registerForPushNotifications(user.id);
+        if (!token) {
+          showToast('error', '알림 권한을 허용해주세요.');
+          return;
+        }
+      }
+
+      await updateNotificationSetting('reportNotifications', value);
+      setNotificationSettings((prev) => ({ ...prev, reportNotifications: value }));
+
+      if (value) {
+        showToast('success', '리포트 알림이 켜졌습니다.');
+      } else {
+        showToast('info', '리포트 알림이 꺼졌습니다.');
+      }
+    } catch (error: any) {
+      console.error('Error toggling report notifications:', error);
+      showToast('error', '설정 변경 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleLogout = async () => {
     RNAlert.alert(
@@ -79,39 +185,27 @@ const SettingsScreen: React.FC = () => {
 
           <Card variant="bordered" padding="none">
             {/* Daily Reminder */}
-            <Pressable
-              className="px-4 py-4 border-b border-gray-200 flex-row items-center justify-between active:bg-gray-50"
-              onPress={() => {
-                RNAlert.alert(
-                  '알림 설정',
-                  '푸시 알림 기능은 곧 추가될 예정입니다.',
-                  [{ text: '확인' }]
-                );
-              }}
-            >
-              <View>
+            <View className="px-4 py-4 border-b border-gray-200 flex-row items-center justify-between">
+              <View className="flex-1">
                 <Text className="text-base text-gray-900 mb-1">
                   일일 리마인더
                 </Text>
                 <Text className="text-sm text-gray-500">
-                  매일 저녁 9시에 알림 받기
+                  매일 {notificationSettings.reminderTime}에 알림 받기
                 </Text>
               </View>
-              <View className="w-12 h-7 bg-gray-300 rounded-full" />
-            </Pressable>
+              <Switch
+                value={notificationSettings.dailyReminder}
+                onValueChange={handleToggleDailyReminder}
+                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+                thumbColor={notificationSettings.dailyReminder ? '#ffffff' : '#f3f4f6'}
+                disabled={isLoadingSettings}
+              />
+            </View>
 
             {/* Badge Notifications */}
-            <Pressable
-              className="px-4 py-4 border-b border-gray-200 flex-row items-center justify-between active:bg-gray-50"
-              onPress={() => {
-                RNAlert.alert(
-                  '알림 설정',
-                  '푸시 알림 기능은 곧 추가될 예정입니다.',
-                  [{ text: '확인' }]
-                );
-              }}
-            >
-              <View>
+            <View className="px-4 py-4 border-b border-gray-200 flex-row items-center justify-between">
+              <View className="flex-1">
                 <Text className="text-base text-gray-900 mb-1">
                   배지 알림
                 </Text>
@@ -119,21 +213,18 @@ const SettingsScreen: React.FC = () => {
                   새 배지 획득 시 알림 받기
                 </Text>
               </View>
-              <View className="w-12 h-7 bg-gray-300 rounded-full" />
-            </Pressable>
+              <Switch
+                value={notificationSettings.badgeNotifications}
+                onValueChange={handleToggleBadgeNotifications}
+                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+                thumbColor={notificationSettings.badgeNotifications ? '#ffffff' : '#f3f4f6'}
+                disabled={isLoadingSettings}
+              />
+            </View>
 
             {/* Report Notifications */}
-            <Pressable
-              className="px-4 py-4 flex-row items-center justify-between active:bg-gray-50"
-              onPress={() => {
-                RNAlert.alert(
-                  '알림 설정',
-                  '푸시 알림 기능은 곧 추가될 예정입니다.',
-                  [{ text: '확인' }]
-                );
-              }}
-            >
-              <View>
+            <View className="px-4 py-4 flex-row items-center justify-between">
+              <View className="flex-1">
                 <Text className="text-base text-gray-900 mb-1">
                   리포트 알림
                 </Text>
@@ -141,8 +232,14 @@ const SettingsScreen: React.FC = () => {
                   주간 리포트 생성 시 알림 받기
                 </Text>
               </View>
-              <View className="w-12 h-7 bg-gray-300 rounded-full" />
-            </Pressable>
+              <Switch
+                value={notificationSettings.reportNotifications}
+                onValueChange={handleToggleReportNotifications}
+                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+                thumbColor={notificationSettings.reportNotifications ? '#ffffff' : '#f3f4f6'}
+                disabled={isLoadingSettings}
+              />
+            </View>
           </Card>
         </View>
 

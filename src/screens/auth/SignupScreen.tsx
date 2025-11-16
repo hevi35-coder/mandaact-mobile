@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useToast } from '@/components/feedback/Toast';
 
 interface SignupScreenProps {
   navigation: any;
@@ -21,20 +20,21 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
-      Alert.alert('오류', '모든 필드를 입력해주세요.');
+      showToast('error', '모든 필드를 입력해주세요.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('오류', '비밀번호가 일치하지 않습니다.');
+      showToast('error', '비밀번호가 일치하지 않습니다.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('오류', '비밀번호는 최소 6자 이상이어야 합니다.');
+      showToast('error', '비밀번호는 최소 6자 이상이어야 합니다.');
       return;
     }
 
@@ -46,21 +46,13 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       });
 
       if (error) {
-        Alert.alert('회원가입 실패', error.message);
+        showToast('error', error.message);
       } else {
-        Alert.alert(
-          '회원가입 성공',
-          '이메일을 확인하여 인증을 완료해주세요.',
-          [
-            {
-              text: '확인',
-              onPress: () => navigation.navigate('Login'),
-            },
-          ]
-        );
+        showToast('success', '회원가입 성공! 이메일을 확인하여 인증을 완료해주세요.');
+        setTimeout(() => navigation.navigate('Login'), 1500);
       }
     } catch (error) {
-      Alert.alert('오류', '회원가입 중 문제가 발생했습니다.');
+      showToast('error', '회원가입 중 문제가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -68,17 +60,16 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text style={styles.title}>회원가입</Text>
-          <Text style={styles.subtitle}>MandaAct 계정 만들기</Text>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="flex-1 justify-center items-center p-5">
+          <Text className="text-4xl font-bold text-sky-500 mb-2">회원가입</Text>
+          <Text className="text-base text-gray-600 mb-10">MandaAct 계정 만들기</Text>
 
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
+          <View className="w-full max-w-sm">
+            <Input
               placeholder="이메일"
               value={email}
               onChangeText={setEmail}
@@ -87,108 +78,48 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
               autoComplete="email"
             />
 
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="비밀번호 (최소 6자)"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoComplete="password-new"
+              className="mt-4"
             />
 
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="비밀번호 확인"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
               autoComplete="password-new"
+              className="mt-4"
             />
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
               onPress={handleSignup}
               disabled={loading}
+              className="mt-6"
             >
-              <Text style={styles.buttonText}>
-                {loading ? '가입 중...' : '회원가입'}
-              </Text>
-            </TouchableOpacity>
+              회원가입
+            </Button>
 
-            <TouchableOpacity
-              style={styles.linkButton}
+            <Button
+              variant="ghost"
+              size="md"
+              fullWidth
               onPress={() => navigation.navigate('Login')}
+              className="mt-4"
             >
-              <Text style={styles.linkText}>이미 계정이 있으신가요? 로그인</Text>
-            </TouchableOpacity>
+              이미 계정이 있으신가요? 로그인
+            </Button>
           </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#0ea5e9',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
-  },
-  form: {
-    width: '100%',
-    maxWidth: 400,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  button: {
-    height: 50,
-    backgroundColor: '#0ea5e9',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#0ea5e9',
-    fontSize: 14,
-  },
-});

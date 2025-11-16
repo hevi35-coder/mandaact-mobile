@@ -2,8 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
@@ -11,8 +9,11 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '@/services/supabase';
 import { useUserStats } from '@/hooks/useUserProfile';
 import { useTodayActions } from '@/hooks/useTodayActions';
-import { getLevelFromXP } from '@/lib/xpMultipliers';
+import { getLevelFromXP, calculateXPForLevel } from '@/lib/xpMultipliers';
 import { getKSTDate } from '@/lib/timezone';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { XPProgressBar, LevelBadge } from '@/components/gamification';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -27,7 +28,7 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <View className="flex-1 justify-center items-center bg-gray-50">
         <ActivityIndicator size="large" color="#0ea5e9" />
       </View>
     );
@@ -47,109 +48,92 @@ export default function HomeScreen() {
     }).length || 0;
 
   const totalToday = todayActions?.length || 0;
-  const currentLevel = userStats ? getLevelFromXP(userStats.totalXP) : 1;
+  const totalXP = userStats?.totalXP || 0;
+  const currentLevel = getLevelFromXP(totalXP);
+
+  // Calculate XP progress for current level
+  const currentLevelXP = calculateXPForLevel(currentLevel);
+  const nextLevelXP = calculateXPForLevel(currentLevel + 1);
+  const currentXP = totalXP - currentLevelXP;
+  const xpNeeded = nextLevelXP - currentLevelXP;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>홈</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>로그아웃</Text>
-        </TouchableOpacity>
+    <ScrollView className="flex-1 bg-gray-50">
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-5 pt-16 pb-5 bg-white">
+        <Text className="text-3xl font-bold text-gray-900">홈</Text>
+        <Button variant="ghost" size="sm" onPress={handleLogout}>
+          로그아웃
+        </Button>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>오늘의 진행상황</Text>
-          <Text style={styles.cardSubtitle}>
-            체크한 실천 항목: {completedToday} / {totalToday}
-          </Text>
-        </View>
+      {/* Content */}
+      <View className="p-5">
+        {/* Level & XP Card */}
+        <Card className="mb-4 items-center">
+          <View className="flex-row items-center justify-center mb-4">
+            <LevelBadge level={currentLevel} size="lg" />
+            <View className="ml-4">
+              <Text className="text-lg font-semibold text-gray-900">
+                Level {currentLevel}
+              </Text>
+              <Text className="text-sm text-gray-600">
+                {totalXP.toLocaleString()} Total XP
+              </Text>
+            </View>
+          </View>
+          <XPProgressBar
+            currentXP={currentXP}
+            nextLevelXP={xpNeeded}
+            level={currentLevel}
+          />
+        </Card>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>레벨 & XP</Text>
-          <Text style={styles.cardSubtitle}>
-            Level {currentLevel} ({userStats?.totalXP || 0} XP)
+        {/* Today's Progress Card */}
+        <Card className="mb-4">
+          <Text className="text-base font-semibold text-gray-900 mb-3">
+            오늘의 진행상황
           </Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>스트릭</Text>
-          <Text style={styles.cardSubtitle}>
-            {userStats?.currentStreak || 0}일 연속 실천 중
+          <View className="flex-row items-end">
+            <Text className="text-4xl font-bold text-sky-500">
+              {completedToday}
+            </Text>
+            <Text className="text-lg text-gray-600 ml-1 mb-1">
+              / {totalToday}
+            </Text>
+          </View>
+          <Text className="text-sm text-gray-600 mt-1">
+            체크한 실천 항목
           </Text>
-        </View>
+        </Card>
 
-        <TouchableOpacity
-          style={styles.actionButton}
+        {/* Streak Card */}
+        <Card className="mb-4">
+          <Text className="text-base font-semibold text-gray-900 mb-3">
+            스트릭
+          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-4xl mr-2">🔥</Text>
+            <View>
+              <Text className="text-3xl font-bold text-orange-500">
+                {userStats?.currentStreak || 0}
+              </Text>
+              <Text className="text-sm text-gray-600">일 연속 실천 중</Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Action Button */}
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
           onPress={() => navigation.navigate('TodayTab' as never)}
+          className="mt-2"
         >
-          <Text style={styles.actionButtonText}>실천하러 가기</Text>
-        </TouchableOpacity>
+          실천하러 가기
+        </Button>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  logoutText: {
-    color: '#0ea5e9',
-    fontSize: 14,
-  },
-  content: {
-    padding: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0ea5e9',
-  },
-  actionButton: {
-    backgroundColor: '#0ea5e9',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

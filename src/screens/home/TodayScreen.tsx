@@ -2,24 +2,26 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTodayActions } from '@/hooks/useTodayActions';
 import { useCheckAction, useUncheckAction } from '@/hooks/useActionMutations';
 import { getKSTDate } from '@/lib/timezone';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/feedback/Toast';
 
 export default function TodayScreen() {
   const navigation = useNavigation();
   const { data: todayActions, isLoading, refetch } = useTodayActions();
   const checkAction = useCheckAction();
   const uncheckAction = useUncheckAction();
+  const { showToast } = useToast();
 
   const onRefresh = async () => {
     await refetch();
@@ -30,26 +32,26 @@ export default function TodayScreen() {
       if (isChecked) {
         // Uncheck
         await uncheckAction.mutateAsync(actionId);
-        Alert.alert('체크 취소', `"${actionContent}" 체크가 취소되었습니다.`);
+        showToast('info', '체크가 취소되었습니다');
       } else {
         // Check
         const result = await checkAction.mutateAsync(actionId);
 
         let message = `+${result.xpAwarded} XP 획득!`;
         if (result.leveledUp) {
-          message += `\n🎉 레벨 ${result.newLevel}로 레벨업!`;
+          message = `🎉 레벨 ${result.newLevel}로 레벨업! +${result.xpAwarded} XP 획득!`;
         }
 
-        Alert.alert('완료!', message);
+        showToast('success', message);
       }
     } catch (error: any) {
-      Alert.alert('오류', error.message || '체크 처리 중 오류가 발생했습니다.');
+      showToast('error', error.message || '체크 처리 중 오류가 발생했습니다.');
     }
   };
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <View className="flex-1 justify-center items-center bg-gray-50">
         <ActivityIndicator size="large" color="#0ea5e9" />
       </View>
     );
@@ -80,44 +82,53 @@ export default function TodayScreen() {
   const formattedDate = `${year}년 ${month}월 ${day}일`;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>오늘의 실천</Text>
-        <Text style={styles.date}>{formattedDate}</Text>
+    <View className="flex-1 bg-gray-50">
+      {/* Header */}
+      <View className="bg-white px-5 pt-16 pb-5 border-b border-gray-200">
+        <Text className="text-3xl font-bold text-gray-900 mb-1">오늘의 실천</Text>
+        <Text className="text-sm text-gray-600">{formattedDate}</Text>
       </View>
 
       <ScrollView
-        style={styles.content}
+        className="flex-1"
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.progressCard}>
-          <Text style={styles.progressTitle}>오늘의 진행상황</Text>
-          <Text style={styles.progressText}>
+        {/* Progress Card */}
+        <Card className="m-4">
+          <Text className="text-base font-semibold text-gray-900 mb-2">
+            오늘의 진행상황
+          </Text>
+          <Text className="text-2xl font-bold text-sky-500 mb-3">
             {completedToday} / {totalToday} 완료
           </Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+          <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <View
+              className="h-full bg-sky-500 rounded-full"
+              style={{ width: `${progressPercent}%` }}
+            />
           </View>
-        </View>
+        </Card>
 
         {totalToday === 0 ? (
-          <View style={styles.emptyState}>
+          <View className="items-center justify-center py-16 px-5">
             <Ionicons name="checkmark-circle-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>오늘 실천할 항목이 없습니다</Text>
-            <Text style={styles.emptySubtext}>
+            <Text className="text-lg font-semibold text-gray-700 mt-4 mb-2">
+              오늘 실천할 항목이 없습니다
+            </Text>
+            <Text className="text-sm text-gray-600 text-center mb-6">
               만다라트를 생성하고 실천 항목을 추가해보세요
             </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
+            <Button
+              variant="primary"
               onPress={() => navigation.navigate('MandalartCreate' as never)}
             >
-              <Text style={styles.emptyButtonText}>만다라트 만들기</Text>
-            </TouchableOpacity>
+              만다라트 만들기
+            </Button>
           </View>
         ) : (
-          <View style={styles.actionsList}>
+          <View className="px-4 pb-4">
             {todayActions?.map((action) => {
               const todayChecks = action.check_history.filter((check) => {
                 const checkDate = getKSTDate(new Date(check.checked_at))
@@ -128,20 +139,32 @@ export default function TodayScreen() {
               const isChecked = todayChecks.length > 0;
 
               return (
-                <View key={action.id} style={styles.actionCard}>
-                  <View style={styles.actionHeader}>
-                    <Text style={styles.mandalartName}>
+                <Card key={action.id} className="mb-3">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <Text className="text-xs text-gray-600 flex-1">
                       {action.sub_goal.mandalart.center_goal}
                     </Text>
-                    <View style={[styles.typeBadge, styles[`type_${action.type}`]]}>
-                      <Text style={styles.typeBadgeText}>
+                    <View
+                      className={`px-2 py-1 rounded ml-2 ${
+                        action.type === 'routine'
+                          ? 'bg-blue-100'
+                          : action.type === 'mission'
+                          ? 'bg-pink-100'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      <Text className="text-xs font-semibold text-gray-700">
                         {action.type === 'routine' ? '루틴' : action.type === 'mission' ? '미션' : '참고'}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.actionContent}>{action.content}</Text>
+                  <Text className="text-base text-gray-900 mb-3">
+                    {action.content}
+                  </Text>
                   <TouchableOpacity
-                    style={[styles.checkButton, isChecked && styles.checkButtonChecked]}
+                    className={`flex-row items-center justify-center p-3 rounded-lg ${
+                      isChecked ? 'bg-green-100' : 'bg-gray-50'
+                    }`}
                     onPress={() => handleToggleCheck(action.id, isChecked, action.content)}
                     disabled={checkAction.isPending || uncheckAction.isPending}
                   >
@@ -150,7 +173,11 @@ export default function TodayScreen() {
                       size={24}
                       color={isChecked ? '#10b981' : '#9ca3af'}
                     />
-                    <Text style={[styles.checkButtonText, isChecked && styles.checkButtonTextChecked]}>
+                    <Text
+                      className={`text-sm font-semibold ml-2 ${
+                        isChecked ? 'text-green-600' : 'text-gray-600'
+                      }`}
+                    >
                       {checkAction.isPending || uncheckAction.isPending
                         ? '처리중...'
                         : isChecked
@@ -158,7 +185,7 @@ export default function TodayScreen() {
                         : '체크'}
                     </Text>
                   </TouchableOpacity>
-                </View>
+                </Card>
               );
             })}
           </View>
@@ -167,167 +194,3 @@ export default function TodayScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  date: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  content: {
-    flex: 1,
-  },
-  progressCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  progressText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0ea5e9',
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#0ea5e9',
-    borderRadius: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#0ea5e9',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionsList: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  actionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  actionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  mandalartName: {
-    fontSize: 12,
-    color: '#6b7280',
-    flex: 1,
-  },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  type_routine: {
-    backgroundColor: '#dbeafe',
-  },
-  type_mission: {
-    backgroundColor: '#fce7f3',
-  },
-  type_reference: {
-    backgroundColor: '#f3f4f6',
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  actionContent: {
-    fontSize: 16,
-    color: '#111827',
-    marginBottom: 12,
-  },
-  checkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#f9fafb',
-    gap: 8,
-  },
-  checkButtonChecked: {
-    backgroundColor: '#d1fae5',
-  },
-  checkButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  checkButtonTextChecked: {
-    color: '#10b981',
-  },
-});
