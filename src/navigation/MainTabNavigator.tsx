@@ -7,6 +7,8 @@ import HomeScreen from '@/screens/home/HomeScreen';
 import TodayScreen from '@/screens/home/TodayScreen';
 import MandalartListScreen from '@/screens/mandalart/MandalartListScreen';
 import StatsScreen from '@/screens/stats/StatsScreen';
+import ReportsScreen from '@/screens/reports/ReportsScreen';
+import SettingsScreen from '@/screens/settings/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,6 +27,10 @@ export default function MainTabNavigator() {
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'StatsTab') {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+          } else if (route.name === 'ReportsTab') {
+            iconName = focused ? 'document-text' : 'document-text-outline';
+          } else if (route.name === 'SettingsTab') {
+            iconName = focused ? 'settings' : 'settings-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -53,6 +59,16 @@ export default function MainTabNavigator() {
         name="StatsTab"
         component={StatsScreen}
         options={{ tabBarLabel: '통계' }}
+      />
+      <Tab.Screen
+        name="ReportsTab"
+        component={ReportsScreen}
+        options={{ tabBarLabel: '리포트' }}
+      />
+      <Tab.Screen
+        name="SettingsTab"
+        component={SettingsScreen}
+        options={{ tabBarLabel: '설정' }}
       />
     </Tab.Navigator>
   );
