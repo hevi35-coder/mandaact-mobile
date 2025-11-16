@@ -1,26 +1,33 @@
 module.exports = function (api) {
   api.cache(true);
+
+  const presets = ['babel-preset-expo'];
+  const plugins = [];
+
+  // NativeWind
+  plugins.push('nativewind/babel');
+
+  // Module resolver
+  plugins.push([
+    'module-resolver',
+    {
+      root: ['./'],
+      alias: {
+        '@': './src',
+        '@/components': './src/components',
+        '@/screens': './src/screens',
+        '@/lib': './src/lib',
+        '@/store': './src/store',
+        '@/types': './src/types',
+        '@/hooks': './src/hooks',
+        '@/services': './src/services',
+        '@/constants': './src/constants',
+      },
+    },
+  ]);
+
   return {
-    presets: ['babel-preset-expo'],
-    plugins: [
-      'react-native-reanimated/plugin',
-      [
-        'module-resolver',
-        {
-          root: ['./'],
-          alias: {
-            '@': './src',
-            '@/components': './src/components',
-            '@/screens': './src/screens',
-            '@/lib': './src/lib',
-            '@/store': './src/store',
-            '@/types': './src/types',
-            '@/hooks': './src/hooks',
-            '@/services': './src/services',
-            '@/constants': './src/constants',
-          },
-        },
-      ],
-    ],
+    presets: presets,
+    plugins: plugins,
   };
 };
