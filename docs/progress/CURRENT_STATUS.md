@@ -1,9 +1,9 @@
 # MandaAct Mobile - 현재 진행상황
 
-**최종 업데이트**: 2025-11-16
+**최종 업데이트**: 2025-11-16 (Session 2)
 **프로젝트 시작**: 2025-11-15
-**전체 진행률**: 35-40%
-**현재 Phase**: Phase 1 완료 → Phase 2 진행 중
+**전체 진행률**: 50-55%
+**현재 Phase**: Phase 2 (Week 4 완료)
 
 ---
 
@@ -12,9 +12,9 @@
 | Phase | 목표 | 완료율 | 상태 | 비고 |
 |-------|------|--------|------|------|
 | **Phase 0** | 프로젝트 초기화 | 100% | ✅ Complete | Expo + TypeScript 설정 완료 |
-| **Phase 1** | 코어 인프라 PoC | 90% | 🔄 거의 완료 | 설정 화면만 미구현 |
-| **Phase 2** | UI/UX 마이그레이션 | 40% | 🔄 진행 중 | 컴포넌트 라이브러리 필요 |
-| **Phase 3** | 기능 마이그레이션 | 20% | 🔄 부분 완료 | 게임화 UI, 리포트 미구현 |
+| **Phase 1** | 코어 인프라 PoC | 90% | ✅ Complete | 설정 화면만 미구현 |
+| **Phase 2** | UI/UX 마이그레이션 | 70% | 🔄 진행 중 | **컴포넌트 라이브러리 완료** |
+| **Phase 3** | 기능 마이그레이션 | 20% | 🔄 부분 완료 | 리포트, 알림 미구현 |
 | **Phase 4** | 테스팅 | 0% | 🔲 미시작 | - |
 | **Phase 5** | 배포 | 0% | 🔲 미시작 | - |
 
@@ -578,3 +578,191 @@ npm run format      # Prettier 포맷
 **문서 버전**: 1.0
 **작성자**: Development Team
 **다음 리뷰**: Phase 2 완료 시 (2025-11-30 예상)
+
+---
+
+## 🎨 Session 2 완료 항목 (2025-11-16)
+
+### UI 컴포넌트 라이브러리 (100% 완료)
+
+#### 기본 UI 컴포넌트
+- ✅ **Button** (`src/components/ui/Button.tsx`)
+  - 4 variants: primary, secondary, ghost, danger
+  - 3 sizes: sm, md, lg
+  - Loading state with spinner
+  - Disabled state styling
+  - Full-width option
+  - TypeScript props validation
+
+- ✅ **Input** (`src/components/ui/Input.tsx`)
+  - Label, error, helper text support
+  - Left/Right icon slots
+  - Password toggle (show/hide)
+  - Focus state styling
+  - Disabled state
+  - TypeScript validation
+
+- ✅ **Card** (`src/components/ui/Card.tsx`)
+  - 3 variants: default, bordered, elevated
+  - Flexible padding (none, sm, md, lg)
+  - Pressable option (onPress)
+  - Custom className support
+
+#### Feedback 컴포넌트
+- ✅ **Toast** (`src/components/feedback/Toast.tsx`)
+  - Context-based toast system (ToastProvider)
+  - 4 types: success, error, warning, info
+  - Auto-dismiss with configurable duration
+  - Slide-in + Fade animations
+  - Multiple toasts support
+  - Custom icons per type
+
+- ✅ **Alert** (`src/components/feedback/Alert.tsx`)
+  - Modal-based alert dialog
+  - 4 types: info, success, warning, error
+  - Customizable buttons (default, cancel, destructive)
+  - Backdrop blur effect
+  - Type-based title colors
+
+- ✅ **LoadingSpinner** (`src/components/feedback/LoadingSpinner.tsx`)
+  - Simple spinner with optional text
+  - Full-screen variant
+  - Customizable size and color
+
+#### Layout 컴포넌트
+- ✅ **Container** (`src/components/layout/Container.tsx`)
+  - Flexible padding options
+  - Centered option
+  - Custom className support
+
+- ✅ **Spacer** (`src/components/layout/Spacer.tsx`)
+  - Simple spacing utility
+  - Custom height/width
+
+---
+
+### 게임화 UI 컴포넌트 (100% 완료)
+
+#### XP & Level 컴포넌트
+- ✅ **XPProgressBar** (`src/components/gamification/XPProgressBar.tsx`)
+  - Animated progress bar (React Native Reanimated)
+  - Spring animation on XP change
+  - Level display
+  - Current/Next level XP counters
+  - Progress percentage
+  - Customizable height
+
+- ✅ **LevelBadge** (`src/components/gamification/LevelBadge.tsx`)
+  - Circular level badge
+  - 5 tier colors (Beginner→Master)
+    - Level 1-4: Gray (Beginner)
+    - Level 5-9: Blue (Intermediate)
+    - Level 10-19: Orange (Advanced)
+    - Level 20-29: Red (Expert)
+    - Level 30+: Purple (Master)
+  - 3 sizes: sm, md, lg
+  - Shadow effect
+
+#### Badge System 컴포넌트
+- ✅ **BadgeCard** (`src/components/gamification/BadgeCard.tsx`)
+  - Locked/Unlocked states
+  - Type-based icons (emoji):
+    - Practice: ✓
+    - Streak: 🔥
+    - Consistency: 📅
+    - Monthly: 🏆
+    - Completion: ⭐
+    - Special: 💎
+  - Progress bar (for locked badges)
+  - NEW indicator
+  - Unlock date display
+  - Pressable (onPress handler)
+
+- ✅ **BadgeGallery** (`src/components/gamification/BadgeGallery.tsx`)
+  - Full badge collection display
+  - 3 filter tabs: All, Unlocked, Locked
+  - Stats header (X/Y badges, progress %)
+  - Grid layout (2 columns)
+  - Empty states
+  - Scrollable
+
+- ✅ **BadgeUnlockModal** (`src/components/gamification/BadgeUnlockModal.tsx`)
+  - Celebration modal
+  - Scale + Rotate animations (Reanimated)
+  - Badge icon with animation
+  - XP reward display
+  - Backdrop blur
+  - Close button
+
+---
+
+### 인프라 업데이트
+
+#### React Native Reanimated 설치 ✅
+- ✅ `react-native-reanimated` 패키지 설치
+- ✅ Babel 플러그인 설정 (`babel.config.js`)
+  - **중요**: 플러그인 배열 마지막에 추가 필수
+- ✅ TypeScript 타입 지원
+
+#### NativeWind 타입 선언 ✅
+- ✅ `src/types/nativewind.d.ts` 생성
+- ✅ className prop 타입 선언:
+  - View, Text, Image, Pressable
+  - ScrollView, TouchableOpacity, FlatList
+- ✅ TypeScript 에러 해결 (0 errors)
+
+#### Toast Provider 통합 ✅
+- ✅ `App.tsx`에 ToastProvider 추가
+- ✅ Provider 중첩 순서:
+  ```tsx
+  SafeAreaProvider
+    → QueryProvider
+      → ToastProvider
+        → RootNavigator
+  ```
+
+#### Component Exports ✅
+- ✅ `src/components/ui/index.ts` (barrel export)
+- ✅ `src/components/gamification/index.ts` (barrel export)
+
+---
+
+## 📈 현재 컴포넌트 라이브러리 현황
+
+### 완료된 컴포넌트 (총 12개)
+**UI**: Button, Input, Card (3개)
+**Feedback**: Toast, Alert, LoadingSpinner (3개)
+**Layout**: Container, Spacer (2개)
+**Gamification**: XPProgressBar, LevelBadge, BadgeCard, BadgeGallery, BadgeUnlockModal (5개) - **NEW**
+
+### 사용 예시
+```tsx
+// Toast
+import { useToast } from '@/components/ui';
+const { showToast } = useToast();
+showToast('success', '체크 완료!');
+
+// Button
+import { Button } from '@/components/ui';
+<Button variant="primary" loading={isLoading} onPress={handlePress}>
+  확인
+</Button>
+
+// XP Progress Bar
+import { XPProgressBar, LevelBadge } from '@/components/gamification';
+<XPProgressBar currentXP={1200} nextLevelXP={2000} level={5} />
+<LevelBadge level={5} size="md" />
+
+// Badge Gallery
+import { BadgeGallery } from '@/components/gamification';
+<BadgeGallery 
+  badges={allBadges}
+  unlockedBadges={myUnlockedBadges}
+  badgeProgress={progressData}
+  newlyUnlockedIds={['badge_id']}
+  onBadgePress={(badge) => console.log(badge)}
+/>
+```
+
+---
+
