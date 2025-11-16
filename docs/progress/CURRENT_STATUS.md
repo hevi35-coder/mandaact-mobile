@@ -1,9 +1,9 @@
 # MandaAct Mobile - 현재 진행상황
 
-**최종 업데이트**: 2025-11-16 (Session 4)
+**최종 업데이트**: 2025-11-16 (Session 5)
 **프로젝트 시작**: 2025-11-15
-**전체 진행률**: 75%
-**현재 Phase**: Phase 3 진행 중 - AI 리포트 통합 완료
+**전체 진행률**: 80%
+**현재 Phase**: Phase 3 진행 중 - AI 리포트 + 푸시 알림 통합 완료
 
 ---
 
@@ -14,7 +14,7 @@
 | **Phase 0** | 프로젝트 초기화 | 100% | ✅ Complete | Expo + TypeScript 설정 완료 |
 | **Phase 1** | 코어 인프라 PoC | 100% | ✅ Complete | 모든 화면 완성 |
 | **Phase 2** | UI/UX 마이그레이션 | 100% | ✅ Complete | **전 화면 UI 컴포넌트 적용 완료** |
-| **Phase 3** | 기능 마이그레이션 | 50% | 🔄 진행 중 | **AI 리포트 통합 완료**, 알림 구현 예정 |
+| **Phase 3** | 기능 마이그레이션 | 75% | 🔄 진행 중 | **AI 리포트 + 푸시 알림 완료**, 성능 최적화 예정 |
 | **Phase 4** | 테스팅 | 0% | 🔲 미시작 | - |
 | **Phase 5** | 배포 | 0% | 🔲 미시작 | - |
 
@@ -1180,13 +1180,239 @@ interface GoalDiagnosis {
 - ✅ SMART 점수 시스템
 - ✅ 리포트 히스토리 관리
 
-**진행 중**:
-- 🔄 Expo Notifications 설정 (예정)
-- 🔄 푸시 알림 구현 (예정)
+**완료**:
+- ✅ Expo Notifications 설정
+- ✅ 푸시 알림 구현
+- ✅ Settings 화면 알림 토글 실제 구현
 
 **미완료**:
 - 🔲 성능 최적화
 - 🔲 오프라인 지원
+
+---
+
+## 🔔 Session 5 완료 항목 (2025-11-16)
+
+### Phase 3: 푸시 알림 시스템 구현 (100% 완료)
+
+#### Expo Notifications 설정 ✅
+**설치된 패키지**:
+- ✅ `expo-notifications` (v0.29.14)
+- ✅ `expo-device` (v7.0.4)
+
+**설정 내용**:
+- ✅ Notification handler 설정
+  - shouldShowAlert, shouldPlaySound, shouldSetBadge
+  - shouldShowBanner, shouldShowList (iOS 14+)
+- ✅ Calendar trigger type 설정 (반복 알림)
+
+---
+
+#### notifications.ts 서비스 구현 ✅
+**파일**: `src/services/notifications.ts` (245 lines)
+
+**핵심 기능**:
+
+1. **권한 관리**
+   - `requestNotificationPermissions()`: 알림 권한 요청
+   - Device.isDevice 체크 (물리 기기만 푸시 알림 가능)
+   - 권한 상태 확인 및 요청 플로우
+
+2. **푸시 토큰 관리**
+   - `registerForPushNotifications(userId)`: Expo Push Token 발급
+   - Supabase `user_push_tokens` 테이블에 저장
+   - Platform 정보 포함 (iOS/Android)
+   - Token 자동 업데이트 (upsert)
+
+3. **설정 관리 (AsyncStorage)**
+   - `getNotificationSettings()`: 설정 불러오기
+   - `saveNotificationSettings()`: 설정 저장
+   - `updateNotificationSetting()`: 개별 설정 업데이트
+   - Default 설정:
+     ```typescript
+     {
+       dailyReminder: true,
+       badgeNotifications: true,
+       reportNotifications: true,
+       reminderTime: '21:00'  // 오후 9시
+     }
+     ```
+
+4. **Daily Reminder 스케줄링**
+   - `scheduleDailyReminder(time)`: 일일 알림 예약
+   - Calendar Trigger 사용 (반복 알림)
+   - HH:mm 형식 시간 파싱
+   - 기존 알림 자동 취소 후 재등록
+   - 알림 내용:
+     - 제목: "🎯 오늘의 실천 체크!"
+     - 내용: "오늘 목표를 달성하셨나요? 지금 확인해보세요!"
+
+5. **알림 취소**
+   - `cancelDailyReminder()`: 일일 알림 취소
+   - `cancelAllNotifications()`: 모든 알림 취소
+
+6. **Local Notification**
+   - `sendLocalNotification(title, body, data)`: 즉시 알림 전송
+   - 커스텀 데이터 전달 가능
+
+7. **Event Listeners**
+   - `addNotificationReceivedListener()`: 포그라운드 알림 수신
+   - `addNotificationResponseReceivedListener()`: 알림 탭 이벤트
+
+---
+
+#### SettingsScreen 업데이트 ✅
+**파일**: `src/screens/settings/SettingsScreen.tsx`
+
+**변경사항**:
+- ✅ Switch 컴포넌트 추가 (React Native)
+- ✅ 알림 설정 state 관리
+- ✅ useEffect로 설정 자동 로드
+- ✅ 3개 토글 실제 구현:
+  1. **일일 리마인더**
+     - 활성화 시 권한 요청 → 푸시 토큰 등록 → 일일 알림 스케줄링
+     - 비활성화 시 알림 취소
+     - 설정된 시간 표시 (예: "매일 21:00에 알림 받기")
+  2. **배지 알림**
+     - 활성화 시 권한 요청 → 푸시 토큰 등록
+     - 배지 획득 시 알림 (향후 구현 예정)
+  3. **리포트 알림**
+     - 활성화 시 권한 요청 → 푸시 토큰 등록
+     - 주간 리포트 생성 시 알림 (향후 구현 예정)
+
+**Toggle Handler 로직**:
+```typescript
+const handleToggleDailyReminder = async (value: boolean) => {
+  try {
+    // 켤 때만 권한 요청
+    if (value && user) {
+      const token = await registerForPushNotifications(user.id);
+      if (!token) {
+        showToast('error', '알림 권한을 허용해주세요.');
+        return;
+      }
+    }
+
+    // AsyncStorage에 설정 저장 (자동으로 스케줄링)
+    await updateNotificationSetting('dailyReminder', value);
+    setNotificationSettings(prev => ({ ...prev, dailyReminder: value }));
+
+    // 피드백
+    if (value) {
+      showToast('success', `매일 ${notificationSettings.reminderTime}에 알림을 받습니다.`);
+    } else {
+      showToast('info', '일일 리마인더가 꺼졌습니다.');
+    }
+  } catch (error) {
+    showToast('error', '설정 변경 중 오류가 발생했습니다.');
+  }
+};
+```
+
+**UI 개선**:
+- ✅ Switch 색상:
+  - Track color: false=#d1d5db (gray-300), true=#3b82f6 (blue-600)
+  - Thumb color: false=#f3f4f6 (gray-100), true=#ffffff (white)
+- ✅ Loading state (isLoadingSettings)
+- ✅ Toast 피드백 (success/error/info)
+
+---
+
+### Supabase Database 요구사항
+
+**테이블**: `user_push_tokens`
+
+```sql
+CREATE TABLE user_push_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  push_token TEXT NOT NULL,
+  platform TEXT NOT NULL,  -- 'ios' or 'android'
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, platform)  -- 사용자당 플랫폼별 1개 토큰
+);
+
+-- Index for fast lookup
+CREATE INDEX idx_user_push_tokens_user_id ON user_push_tokens(user_id);
+```
+
+**Note**: 이 테이블은 아직 생성되지 않았을 수 있습니다. 첫 알림 테스트 시 Supabase 콘솔에서 생성 필요.
+
+---
+
+### TypeScript 타입 안전성 ✅
+- ✅ NotificationSettings 인터페이스 정의
+- ✅ NotificationBehavior 타입 (shouldShowBanner, shouldShowList 포함)
+- ✅ CalendarTriggerInput 타입 (type 필드 필수)
+- ✅ 모든 함수에 타입 명시
+
+---
+
+### 코드 통계
+
+**새로 추가된 파일**: 1개
+- `src/services/notifications.ts` (245줄)
+
+**업데이트된 파일**: 3개
+- `src/screens/settings/SettingsScreen.tsx` (+139줄, -42줄 = +97줄 순증가)
+- `package.json` (expo-notifications, expo-device 추가)
+- `package-lock.json` (의존성 해결)
+
+**총 코드 증가**: +342줄
+
+---
+
+### 테스트 필요 사항
+
+**기능 테스트**:
+1. ✅ TypeScript 타입 체크 통과
+2. ⚠️ 물리 기기에서 권한 요청 플로우 테스트 필요
+3. ⚠️ 일일 알림 스케줄링 테스트 필요
+4. ⚠️ Supabase user_push_tokens 테이블 생성 필요
+5. ⚠️ 실제 푸시 알림 전송 테스트 필요
+
+**주의사항**:
+- Expo Go 앱에서는 푸시 알림이 제한적으로 작동
+- Production 테스트를 위해 EAS Build 필요
+- iOS: Apple Developer 계정 필요 (APNs 설정)
+- Android: Firebase 설정 필요 (FCM)
+
+---
+
+### Phase 3 최종 현황
+
+**완료율**: 75% ✅
+
+**달성 항목**:
+1. ✅ AI 리포트 통합 (주간 리포트, 목표 진단)
+2. ✅ Edge Function 연동
+3. ✅ SMART 점수 시스템
+4. ✅ 푸시 알림 시스템 구축
+5. ✅ Settings 화면 실제 알림 토글 구현
+6. ✅ AsyncStorage 기반 설정 관리
+7. ✅ 권한 요청 플로우
+
+**미완료 (Phase 3 남은 25%)**:
+- [ ] 성능 최적화 (FlatList 가상화, 이미지 최적화)
+- [ ] 오프라인 지원 (AsyncStorage persistence)
+- [ ] 실제 배지 알림 전송 (배지 획득 시)
+- [ ] 실제 리포트 알림 전송 (주간 리포트 생성 시)
+
+---
+
+## 📈 주요 진행 지표
+
+### Session 4 → Session 5 변화
+- **Phase 3 진행률**: 50% → **75%**
+- **전체 진행률**: 75% → **80%**
+- **알림 시스템**: 0% → 100%
+- **Settings 화면**: 70% → **90%** (알림 토글 실제 구현)
+
+### 다음 단계 (Phase 3 완료)
+- [ ] 성능 최적화
+- [ ] 오프라인 지원
+- [ ] 배지/리포트 알림 자동 전송
 
 ---
 
