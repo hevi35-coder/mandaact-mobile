@@ -26,6 +26,9 @@ module.exports = function (api) {
     },
   ]);
 
+  // React Native Reanimated (must be last)
+  plugins.push('react-native-reanimated/plugin');
+
   return {
     presets: presets,
     plugins: plugins,
