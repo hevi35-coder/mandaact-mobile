@@ -3,59 +3,69 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
 import { Card, Button, LoadingSpinner } from '@/components/ui';
+import { useToast } from '@/components/feedback/Toast';
+import { useGenerateWeeklyReport, useWeeklyReports } from '@/hooks/useWeeklyReport';
+import { useGenerateGoalDiagnosis, useGoalDiagnosis } from '@/hooks/useGoalDiagnosis';
+import { useMandalarts } from '@/hooks/useMandalarts';
 
 type TabType = 'weekly' | 'diagnosis';
 
 const ReportsScreen: React.FC = () => {
   const { user } = useAuthStore();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('weekly');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
-  const [diagnosis, setDiagnosis] = useState<string | null>(null);
+  const [selectedMandalartId, setSelectedMandalartId] = useState<string | null>(null);
+
+  // Hooks
+  const generateWeeklyReport = useGenerateWeeklyReport();
+  const { data: weeklyReports } = useWeeklyReports(user?.id);
+  const { data: mandalarts } = useMandalarts();
+  const generateGoalDiagnosis = useGenerateGoalDiagnosis();
+  const { data: goalDiagnosis } = useGoalDiagnosis(selectedMandalartId || undefined);
+
+  // Get latest weekly report
+  const latestWeeklyReport = weeklyReports?.[0];
+
+  // Get active mandalarts for diagnosis
+  const activeMandalarts = mandalarts?.filter(m => m.is_active) || [];
+
+  // Set first active mandalart as default
+  React.useEffect(() => {
+    if (!selectedMandalartId && activeMandalarts.length > 0) {
+      setSelectedMandalartId(activeMandalarts[0].id);
+    }
+  }, [activeMandalarts, selectedMandalartId]);
 
   // Generate Weekly Report
-  const generateWeeklyReport = async () => {
-    if (!user) return;
+  const handleGenerateWeeklyReport = async () => {
+    if (!user) {
+      showToast('error', '로그인이 필요합니다.');
+      return;
+    }
 
-    setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'generate-weekly-report',
-        {
-          body: { user_id: user.id },
-        }
-      );
-
-      if (error) throw error;
-
-      if (data?.report) {
-        setWeeklyReport(data.report);
-      }
-    } catch (error) {
+      await generateWeeklyReport.mutateAsync({ userId: user.id });
+      showToast('success', '주간 리포트가 생성되었습니다!');
+    } catch (error: any) {
       console.error('Weekly report generation error:', error);
-      setWeeklyReport('# 오류\n\n리포트 생성 중 오류가 발생했습니다.');
-    } finally {
-      setIsGenerating(false);
+      showToast('error', error.message || '리포트 생성 중 오류가 발생했습니다.');
     }
   };
 
-  // Generate Goal Diagnosis (placeholder)
-  const generateDiagnosis = async () => {
-    setIsGenerating(true);
+  // Generate Goal Diagnosis
+  const handleGenerateDiagnosis = async () => {
+    if (!selectedMandalartId) {
+      showToast('error', '만다라트를 선택해주세요.');
+      return;
+    }
+
     try {
-      // TODO: Implement when user has active mandalart
-      setTimeout(() => {
-        setDiagnosis(
-          '# 목표 진단\n\n활성 만다라트가 선택되지 않았습니다.\n\n만다라트 관리에서 먼저 만다라트를 활성화해주세요.'
-        );
-        setIsGenerating(false);
-      }, 1000);
-    } catch (error) {
+      await generateGoalDiagnosis.mutateAsync({ mandalartId: selectedMandalartId });
+      showToast('success', '목표 진단이 완료되었습니다!');
+    } catch (error: any) {
       console.error('Diagnosis generation error:', error);
-      setDiagnosis('# 오류\n\n진단 생성 중 오류가 발생했습니다.');
-      setIsGenerating(false);
+      showToast('error', error.message || '진단 생성 중 오류가 발생했습니다.');
     }
   };
 
@@ -106,15 +116,20 @@ const ReportsScreen: React.FC = () => {
       <ScrollView className="flex-1">
         {activeTab === 'weekly' ? (
           <WeeklyReportTab
-            report={weeklyReport}
-            isGenerating={isGenerating}
-            onGenerate={generateWeeklyReport}
+            report={latestWeeklyReport?.content || null}
+            isGenerating={generateWeeklyReport.isPending}
+            onGenerate={handleGenerateWeeklyReport}
           />
         ) : (
           <DiagnosisTab
-            diagnosis={diagnosis}
-            isGenerating={isGenerating}
-            onGenerate={generateDiagnosis}
+            diagnosis={goalDiagnosis?.analysis || null}
+            smartScore={goalDiagnosis?.smart_score}
+            suggestions={goalDiagnosis?.suggestions}
+            isGenerating={generateGoalDiagnosis.isPending}
+            onGenerate={handleGenerateDiagnosis}
+            mandalarts={activeMandalarts}
+            selectedMandalartId={selectedMandalartId}
+            onSelectMandalart={setSelectedMandalartId}
           />
         )}
       </ScrollView>
@@ -219,17 +234,64 @@ const WeeklyReportTab: React.FC<WeeklyReportTabProps> = ({
 // Diagnosis Tab
 interface DiagnosisTabProps {
   diagnosis: string | null;
+  smartScore?: {
+    specific: number;
+    measurable: number;
+    achievable: number;
+    relevant: number;
+    timeBound: number;
+    total: number;
+  };
+  suggestions?: string[];
   isGenerating: boolean;
   onGenerate: () => void;
+  mandalarts: any[];
+  selectedMandalartId: string | null;
+  onSelectMandalart: (id: string) => void;
 }
 
 const DiagnosisTab: React.FC<DiagnosisTabProps> = ({
   diagnosis,
+  smartScore,
+  suggestions,
   isGenerating,
   onGenerate,
+  mandalarts,
+  selectedMandalartId,
+  onSelectMandalart,
 }) => {
   return (
     <View className="p-4">
+      {/* Mandalart Selection */}
+      {mandalarts.length > 0 && (
+        <Card variant="bordered" padding="md" className="mb-4">
+          <Text className="text-sm font-semibold text-gray-700 mb-3">
+            진단할 만다라트 선택
+          </Text>
+          {mandalarts.map((mandalart) => (
+            <Pressable
+              key={mandalart.id}
+              onPress={() => onSelectMandalart(mandalart.id)}
+              className={`p-3 rounded-lg mb-2 ${
+                selectedMandalartId === mandalart.id
+                  ? 'bg-blue-100 border-2 border-blue-500'
+                  : 'bg-gray-100'
+              }`}
+            >
+              <Text
+                className={`font-semibold ${
+                  selectedMandalartId === mandalart.id
+                    ? 'text-blue-700'
+                    : 'text-gray-700'
+                }`}
+              >
+                {mandalart.center_goal}
+              </Text>
+            </Pressable>
+          ))}
+        </Card>
+      )}
+
       <Card variant="bordered" padding="md">
         <Text className="text-lg font-bold text-gray-900 mb-2">
           🎯 목표 진단
@@ -238,7 +300,16 @@ const DiagnosisTab: React.FC<DiagnosisTabProps> = ({
           만다라트 구조를 SMART 기준으로 분석하고, 개선 방향을 제안합니다.
         </Text>
 
-        {!diagnosis && !isGenerating && (
+        {!diagnosis && !isGenerating && mandalarts.length === 0 && (
+          <View className="py-4">
+            <Text className="text-sm text-gray-600 text-center">
+              활성 만다라트가 없습니다.{'\n'}
+              먼저 만다라트를 생성하고 활성화해주세요.
+            </Text>
+          </View>
+        )}
+
+        {!diagnosis && !isGenerating && mandalarts.length > 0 && (
           <Button
             variant="primary"
             fullWidth
@@ -254,6 +325,28 @@ const DiagnosisTab: React.FC<DiagnosisTabProps> = ({
 
         {diagnosis && !isGenerating && (
           <View>
+            {/* SMART Score */}
+            {smartScore && (
+              <View className="bg-blue-50 rounded-lg p-4 mb-4">
+                <Text className="text-sm font-semibold text-gray-700 mb-3">
+                  SMART 점수
+                </Text>
+                <View className="space-y-2">
+                  <ScoreBar label="Specific" score={smartScore.specific} />
+                  <ScoreBar label="Measurable" score={smartScore.measurable} />
+                  <ScoreBar label="Achievable" score={smartScore.achievable} />
+                  <ScoreBar label="Relevant" score={smartScore.relevant} />
+                  <ScoreBar label="Time-bound" score={smartScore.timeBound} />
+                </View>
+                <View className="mt-3 pt-3 border-t border-blue-200">
+                  <Text className="text-lg font-bold text-blue-700">
+                    총점: {smartScore.total}/100
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Analysis */}
             <ScrollView className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
               <Markdown
                 style={{
@@ -281,6 +374,20 @@ const DiagnosisTab: React.FC<DiagnosisTabProps> = ({
               </Markdown>
             </ScrollView>
 
+            {/* Suggestions */}
+            {suggestions && suggestions.length > 0 && (
+              <View className="bg-yellow-50 rounded-lg p-4 mb-4">
+                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                  💡 개선 제안
+                </Text>
+                {suggestions.map((suggestion, index) => (
+                  <Text key={index} className="text-sm text-gray-600 mb-1">
+                    • {suggestion}
+                  </Text>
+                ))}
+              </View>
+            )}
+
             <Button
               variant="secondary"
               fullWidth
@@ -305,6 +412,30 @@ const DiagnosisTab: React.FC<DiagnosisTabProps> = ({
           • Time-bound: 기한이 명확한가?
         </Text>
       </Card>
+    </View>
+  );
+};
+
+// Score Bar Component
+const ScoreBar: React.FC<{ label: string; score: number }> = ({ label, score }) => {
+  const getColor = (score: number) => {
+    if (score >= 80) return 'bg-green-500';
+    if (score >= 60) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <View className="mb-2">
+      <View className="flex-row justify-between mb-1">
+        <Text className="text-xs text-gray-600">{label}</Text>
+        <Text className="text-xs font-semibold text-gray-700">{score}/100</Text>
+      </View>
+      <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <View
+          className={`h-full ${getColor(score)}`}
+          style={{ width: `${score}%` }}
+        />
+      </View>
     </View>
   );
 };
